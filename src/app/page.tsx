@@ -98,7 +98,11 @@ export default function Home() {
   return (
     <main className="mx-auto flex h-screen max-w-2xl flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <AssistantSelector value={assistantId} onChange={setAssistantId} />
+        <AssistantSelector
+          value={assistantId}
+          onChange={setAssistantId}
+          disabled={loading || !!pendingProposal}
+        />
         <button
           className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300"
           onClick={handleNewConversation}
