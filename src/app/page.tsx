@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { ChatWindow, ChatEntry } from "../components/ChatWindow";
 import { ApprovalCard, Proposal } from "../components/ApprovalCard";
-
-type AssistantId = "suporte" | "viagens";
+import { AssistantSelector } from "../components/AssistantSelector";
+import { AssistantId } from "../lib/graph/assistants";
 
 function newThreadId(): string {
   return crypto.randomUUID();
@@ -15,7 +15,7 @@ function threadKey(assistantId: AssistantId): string {
 }
 
 export default function Home() {
-  const assistantId: AssistantId = "suporte";
+  const [assistantId, setAssistantId] = useState<AssistantId>("suporte");
   const [threadId, setThreadId] = useState<string>("");
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [pendingProposal, setPendingProposal] = useState<Proposal | null>(
@@ -30,6 +30,8 @@ export default function Home() {
     const id = existing ?? newThreadId();
     if (!existing) sessionStorage.setItem(key, id);
     setThreadId(id);
+    setEntries([]);
+    setPendingProposal(null);
   }, [assistantId]);
 
   async function send(body: Record<string, unknown>) {
@@ -96,7 +98,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex h-screen max-w-2xl flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Aurora — Assistente de Suporte</h1>
+        <AssistantSelector value={assistantId} onChange={setAssistantId} />
         <button
           className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300"
           onClick={handleNewConversation}
