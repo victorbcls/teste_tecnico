@@ -36,7 +36,7 @@ describe("POST /api/chat", () => {
 
   it("returns 400 when threadId is missing", async () => {
     const res = await POST(
-      jsonRequest({ assistantId: "suporte", message: "oi" }) as any
+      jsonRequest({ assistantId: "suporte", message: "oi" })
     );
     expect(res.status).toBe(400);
   });
@@ -47,7 +47,7 @@ describe("POST /api/chat", () => {
         threadId: "t1",
         assistantId: "financeiro",
         message: "oi",
-      }) as any
+      })
     );
     expect(res.status).toBe(400);
   });
@@ -67,7 +67,7 @@ describe("POST /api/chat", () => {
         threadId: "api-test-1",
         assistantId: "suporte",
         message: "Liste os chamados abertos.",
-      }) as any
+      })
     );
     const json = await res.json();
     expect(res.status).toBe(200);
@@ -97,7 +97,7 @@ describe("POST /api/chat", () => {
         threadId: "api-test-2",
         assistantId: "suporte",
         message: "Escalone o CH-101.",
-      }) as any
+      })
     );
     const json = await res.json();
     expect(json.proposal).toEqual({
@@ -130,14 +130,14 @@ describe("POST /api/chat", () => {
         threadId: "api-test-3",
         assistantId: "suporte",
         message: "Escalone o CH-101.",
-      }) as any
+      })
     );
     const res = await POST(
       jsonRequest({
         threadId: "api-test-3",
         assistantId: "suporte",
         resume: { approved: true },
-      }) as any
+      })
     );
     const json = await res.json();
     expect(json.message).toContain("registrado");

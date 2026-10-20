@@ -104,8 +104,9 @@ export default function Home() {
           disabled={loading || !!pendingProposal}
         />
         <button
-          className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300"
+          className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300 disabled:opacity-50"
           onClick={handleNewConversation}
+          disabled={loading}
         >
           Nova conversa
         </button>
