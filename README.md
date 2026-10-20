@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aurora Support Assistant
 
-## Getting Started
+Assistente de suporte para a empresa fictícia Aurora: consulta chamados
+mockados, lista por situação, e só registra um escalonamento depois de
+aprovação humana explícita. Orquestrado em LangGraph.js, servido por
+Next.js, instrumentado com LangSmith.
 
-First, run the development server:
+## Requisitos
+
+- Node.js 20 (ver `.nvmrc`)
+- pnpm
+- [Ollama](https://ollama.com) rodando localmente, com o modelo:
+  `ollama pull qwen2.5:7b-instruct`
+- Conta gratuita no [LangSmith](https://smith.langchain.com) para rodar a
+  avaliação e ver os traces (opcional para só rodar os testes offline)
+
+## Instalação
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.example .env.local
+# edite .env.local e preencha LANGCHAIN_API_KEY
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Rodando
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+ollama serve &
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Abra `http://localhost:3000`.
 
-## Learn More
+## Testes offline
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm test
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Cobrem os 7 cenários exigidos (consulta/listagem, chamado resolvido,
+aprovação/rejeição, aprovação repetida, falha transitória, saída
+inválida/limites, sessões isoladas) com um modelo de chat fake
+determinístico — nenhum teste chama rede ou o Ollama real.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Avaliação no LangSmith
 
-## Deploy on Vercel
+```bash
+pnpm seed:dataset
+pnpm eval
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Usa o modelo real configurado em `OLLAMA_MODEL` (padrão
+`qwen2.5:7b-instruct`). O dataset `aurora-support-eval` tem o caso
+obrigatório ("Liste todos os chamados abertos.") e um caso adicional
+("Consulte o CH-102 e prepare um escalonamento se ele estiver aberto.").
+Os avaliadores (`evaluation/evaluators.ts`) checam os tool calls reais do
+run, não só o texto final — reprovam qualquer resposta que pule a
+consulta ou cite um chamado que a tool não retornou (testado em
+`tests/evaluation.evaluators.test.ts`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Fluxo
+
+Solicitação → consulta (tool real) → proposta de escalonamento → pausa do
+LangGraph (`interrupt()`) aguardando aprovação → aprovado registra
+(idempotente), rejeitado encerra sem registrar → confirmação final.
+
+Detalhes de arquitetura em
+`docs/superpowers/specs/2026-10-20-aurora-support-assistant-design.md`.
+
+## Decisões
+
+- Checkpoint em memória (`MemorySaver`) — suficiente para o desafio, sem
+  banco de dados.
+- Pausa/retomada via `interrupt()` dinâmico num nó dedicado, não
+  `interruptBefore` estático — permite moldar o payload exibido e o
+  payload de retomada.
+- Regra "só chamado aberto escala" é checada em código antes do
+  `interrupt()`, nunca delegada só ao prompt.
+- Modelo local via Ollama para rodar sem custo nenhum; `OLLAMA_MODEL` é
+  trocável por variável de ambiente.
+
+## Limitações conhecidas
+
+- Checkpoint em memória: o histórico se perde ao reiniciar o servidor.
+- Sem autenticação — uso local/demonstração.
+- `qwen2.5:7b-instruct` em hardware modesto pode ser lento; trocar para
+  `llama3.2:3b-instruct` via `OLLAMA_MODEL` se necessário.
+- Nos desvios de `proposeEscalation` que não chegam a pausar (chamado não
+  aberto, não encontrado, argumentos inválidos ou proposta rejeitada), a
+  resposta ao `tool_call` de `registrar_escalonamento` é uma `AIMessage`,
+  não uma `ToolMessage` — isso pode quebrar a validação de histórico de
+  alguns provedores de modelo reais (que exigem uma resposta de tool para
+  cada tool_call) caso a mesma conversa continue depois de um
+  bloqueio/rejeição. Não é exercitado pelos cenários obrigatórios.
+- Se o modelo emitir `registrar_escalonamento` junto com outra tool call
+  no mesmo turno, a tool call adicional nunca é executada nem respondida
+  (só alcançável com um modelo real emitindo tool calls paralelas).
+- `escalationRegistered`/`escalationRecord` são por thread, não por
+  chamado: um segundo escalonamento legitimamente diferente na mesma
+  conversa retorna o registro do primeiro em vez de registrar o novo.
