@@ -56,7 +56,7 @@ export async function searchChunks(
   opts: { k?: number; country?: string; minScore?: number } = {}
 ): Promise<SearchResult[]> {
   const k = opts.k ?? 3;
-  const minScore = opts.minScore ?? 0.3;
+  const minScore = opts.minScore ?? Number(process.env.RAG_MIN_SCORE ?? 0.3);
   const queryVector = await embeddings.embedQuery(query);
 
   const pool = opts.country

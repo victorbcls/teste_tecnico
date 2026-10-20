@@ -26,21 +26,6 @@ function findPendingEscalationCall(state: GraphStateType) {
 }
 
 export async function registerEscalationNode(state: GraphStateType) {
-  if (state.escalationRegistered && state.escalationRecord) {
-    const escalationCall = findPendingEscalationCall(state);
-    return {
-      messages: [
-        new ToolMessage({
-          tool_call_id: escalationCall?.id ?? "registrar_escalonamento",
-          content: JSON.stringify({
-            alreadyRegistered: true,
-            record: state.escalationRecord,
-          }),
-        }),
-      ],
-    };
-  }
-
   const escalationCall = findPendingEscalationCall(state);
   if (!escalationCall) {
     throw new InvalidInputError(
@@ -49,6 +34,27 @@ export async function registerEscalationNode(state: GraphStateType) {
   }
 
   const record = buildEscalationRecord(escalationCall.args);
+
+  // Idempotência só vale para o MESMO chamado: um resume repetido da mesma
+  // proposta devolve o registro em cache, mas um escalonamento de outro
+  // chamado nunca pode ser confirmado com o registro anterior.
+  if (
+    state.escalationRegistered &&
+    state.escalationRecord &&
+    state.escalationRecord.chamadoId === record.chamadoId
+  ) {
+    return {
+      messages: [
+        new ToolMessage({
+          tool_call_id: escalationCall.id ?? "registrar_escalonamento",
+          content: JSON.stringify({
+            alreadyRegistered: true,
+            record: state.escalationRecord,
+          }),
+        }),
+      ],
+    };
+  }
 
   return {
     escalationRegistered: true,

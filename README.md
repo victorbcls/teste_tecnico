@@ -96,8 +96,14 @@ Detalhes de arquitetura em
   no mesmo turno, a tool call adicional nunca é executada nem respondida
   (só alcançável com um modelo real emitindo tool calls paralelas).
 - `escalationRegistered`/`escalationRecord` são por thread, não por
-  chamado: um segundo escalonamento legitimamente diferente na mesma
-  conversa retorna o registro do primeiro em vez de registrar o novo.
+  chamado: o estado lembra apenas o escalonamento mais recente. Um segundo
+  escalonamento de outro chamado na mesma conversa é registrado de verdade e
+  sobrescreve o registro anterior (a idempotência só vale para o mesmo
+  chamado), mas o histórico dos registros anteriores não fica no estado.
+- O `minScore` padrão do RAG (0.3) foi calibrado contra o dublê de
+  embeddings falsos usado nos testes, não contra o `nomic-embed-text` real;
+  convém calibrá-lo com embeddings reais (verificando que uma pergunta fora
+  do escopo realmente retorna `found: false`), ajustável via `RAG_MIN_SCORE`.
 
 ## Bônus: assistente de Viagens + RAG
 

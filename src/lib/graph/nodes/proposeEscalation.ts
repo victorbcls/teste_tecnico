@@ -1,8 +1,13 @@
-import { AIMessage } from "@langchain/core/messages";
+import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { interrupt } from "@langchain/langgraph";
 import { consultarChamado } from "../../tools/mockChamados";
-import { NotFoundError, InvalidInputError } from "../../tools/errors";
+import {
+  NotFoundError,
+  InvalidInputError,
+  ToolNotAllowedError,
+} from "../../tools/errors";
 import { RegistrarEscalonamentoInputSchema } from "../../tools/schemas";
+import { AssistantConfig } from "../assistants";
 import { GraphStateType } from "../state";
 
 export interface EscalationProposal {
@@ -15,7 +20,10 @@ export interface EscalationDecision {
   approved: boolean;
 }
 
-export async function proposeEscalationNode(state: GraphStateType) {
+export async function proposeEscalationNode(
+  state: GraphStateType,
+  config: { configurable?: { assistant?: AssistantConfig } }
+) {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const escalationCall = lastMessage.tool_calls?.find(
     (c) => c.name === "registrar_escalonamento"
@@ -24,6 +32,25 @@ export async function proposeEscalationNode(state: GraphStateType) {
     throw new InvalidInputError(
       "proposeEscalationNode chamado sem tool_call registrar_escalonamento"
     );
+  }
+
+  // A separação de tools é aplicada no backend: um assistant sem
+  // `registrar_escalonamento` na allowlist nunca chega a propor (nem a pausar
+  // para aprovação humana), independente do que o modelo tenha emitido.
+  const assistant = config.configurable?.assistant;
+  if (!assistant?.allowedTools.includes("registrar_escalonamento")) {
+    const error = new ToolNotAllowedError(
+      "registrar_escalonamento",
+      assistant?.id ?? "desconhecido"
+    );
+    return {
+      messages: [
+        new ToolMessage({
+          tool_call_id: escalationCall.id ?? "registrar_escalonamento",
+          content: JSON.stringify({ error: error.message }),
+        }),
+      ],
+    };
   }
 
   const parsed = RegistrarEscalonamentoInputSchema.safeParse(

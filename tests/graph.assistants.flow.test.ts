@@ -117,6 +117,45 @@ describe("assistants separation (bonus, B4)", () => {
     expect(content.error).toContain("não é permitida");
   });
 
+  it("viagens cannot reach the escalation write path", async () => {
+    const graph = buildGraph();
+    const config = configFor("t-viagens-blocked-escalation", "viagens", [
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            name: "registrar_escalonamento",
+            args: {
+              chamadoId: "CH-101",
+              resumo: "Falha recorrente de login",
+              justificativa: "Vários usuários afetados",
+            },
+            id: "c1",
+          },
+        ],
+      }),
+    ]);
+
+    const result = await graph.invoke(
+      { messages: [new HumanMessage("Escalone o CH-101.")] },
+      config
+    );
+
+    const toolMessage = result.messages.find(
+      (m) => (m as { _getType?: () => string })._getType?.() === "tool"
+    );
+    const content = JSON.parse((toolMessage?.content as string) ?? "{}");
+    expect(content.error).toContain("não é permitida");
+    expect(content.error).toContain("registrar_escalonamento");
+
+    const state = await graph.getState(config);
+    // nothing was written and the graph never paused for human approval
+    expect(state.values.escalationRegistered).toBe(false);
+    expect(state.values.escalationRecord).toBeNull();
+    expect(state.next).toEqual([]);
+    expect(state.tasks).toHaveLength(0);
+  });
+
   it("suporte cannot query the RAG base", async () => {
     const graph = buildGraph();
     const config = configFor("t-suporte-blocked", "suporte", [

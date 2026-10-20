@@ -301,6 +301,98 @@ describe("Aurora support graph — required scenarios", () => {
     expect(finalState.tasks).toHaveLength(0);
   });
 
+  it("scenario 3d: a second escalation for a different chamado is really registered, not falsely confirmed", async () => {
+    const graph = buildGraph();
+    const config = configFor("t-approve-twice", [
+      // turn 1: propose escalating CH-101 (open)
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            name: "registrar_escalonamento",
+            args: {
+              chamadoId: "CH-101",
+              resumo: "Falha recorrente de login",
+              justificativa: "Vários usuários afetados",
+            },
+            id: "c1",
+          },
+        ],
+      }),
+      // turn 1: after the approved registration
+      new AIMessage({
+        content: "Escalonamento do CH-101 registrado com sucesso.",
+      }),
+      // turn 2: propose escalating CH-103, a different open chamado
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            name: "registrar_escalonamento",
+            args: {
+              chamadoId: "CH-103",
+              resumo: "Integração de pagamentos instável",
+              justificativa: "Impacto em faturamento",
+            },
+            id: "c2",
+          },
+        ],
+      }),
+      // turn 2: after the approved registration
+      new AIMessage({
+        content: "Escalonamento do CH-103 registrado com sucesso.",
+      }),
+    ]);
+
+    // turn 1: propose, approve, register CH-101
+    await graph.invoke(
+      { messages: [new HumanMessage("Escalone o CH-101.")] },
+      config
+    );
+    await graph.invoke(new Command({ resume: { approved: true } }), config);
+
+    const stateAfterFirst = await graph.getState(config);
+    expect(stateAfterFirst.values.escalationRecord?.chamadoId).toBe("CH-101");
+
+    // turn 2, same thread: a genuinely different escalation must be registered
+    await graph.invoke(
+      { messages: [new HumanMessage("Agora escalone o CH-103.")] },
+      config
+    );
+    const pausedState = await graph.getState(config);
+    expect(pausedState.tasks[0]?.interrupts?.[0]?.value).toEqual({
+      chamadoId: "CH-103",
+      resumo: "Integração de pagamentos instável",
+      justificativa: "Impacto em faturamento",
+    });
+
+    const result = await graph.invoke(
+      new Command({ resume: { approved: true } }),
+      config
+    );
+
+    const finalState = await graph.getState(config);
+    expect(finalState.values.escalationRegistered).toBe(true);
+    // the record describes the NEW escalation, not the stale CH-101 one
+    expect(finalState.values.escalationRecord?.chamadoId).toBe("CH-103");
+    expect(finalState.values.escalationRecord?.resumo).toBe(
+      "Integração de pagamentos instável"
+    );
+
+    // the tool result for c2 reports a real registration, not a cached one
+    const c2Result = (result.messages as { content: unknown; tool_call_id?: string }[])
+      .filter((m) => m.tool_call_id === "c2")
+      .map((m) => String(m.content))
+      .join(" | ");
+    expect(c2Result).toContain("CH-103");
+    expect(c2Result).toContain("registered");
+    expect(c2Result).not.toContain("alreadyRegistered");
+    expect(c2Result).not.toContain("CH-101");
+
+    const finalMessage = result.messages[result.messages.length - 1];
+    expect(finalMessage.content).toContain("CH-103");
+  });
+
   it("scenario 5: recovers from a transient tool failure within the retry limit", async () => {
     const spy = vi.spyOn(mockChamadosModule, "consultarChamado");
     let calls = 0;
