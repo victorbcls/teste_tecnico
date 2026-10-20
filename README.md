@@ -98,3 +98,29 @@ Detalhes de arquitetura em
 - `escalationRegistered`/`escalationRecord` são por thread, não por
   chamado: um segundo escalonamento legitimamente diferente na mesma
   conversa retorna o registro do primeiro em vez de registrar o novo.
+
+## Bônus: assistente de Viagens + RAG
+
+Implementa o conceito de **Assistants** sobre o mesmo grafo LangGraph do
+suporte: cada assistant é só uma configuração (`src/lib/graph/assistants.ts`)
+de system prompt + lista de tools permitidas, resolvida por execução via
+`config.configurable`. Não existe um segundo grafo.
+
+- Base de conhecimento fictícia em `data/rag-docs/` (França e Japão),
+  identificada como simulação, com frontmatter de
+  nacionalidade/finalidade/duração.
+- Embeddings via Ollama (`nomic-embed-text`, configurável por
+  `OLLAMA_EMBEDDING_MODEL`) indexados em memória
+  (`src/lib/rag/vectorStore.ts`) — sem banco vetorial externo.
+- `call_rag` retorna os trechos recuperados com a fonte; quando a busca
+  não encontra evidência suficiente, retorna `found: false` e o assistant
+  reconhece a limitação em vez de inventar.
+- A restrição de tools por assistant é validada no `toolsNode`
+  (`src/lib/graph/nodes/tools.ts`), não só pelo prompt: suporte não pode
+  chamar `call_rag`, viagens não pode chamar nenhuma tool de chamados.
+  Comprovado em `tests/graph.assistants.flow.test.ts`.
+- A UI tem um seletor de assistant; cada assistant mantém seu próprio
+  `thread_id` (`sessionStorage`), então o histórico não se mistura.
+
+Para rodar: `ollama pull nomic-embed-text` além do modelo de chat, depois
+`pnpm dev` e trocar o assistant no seletor da página.
