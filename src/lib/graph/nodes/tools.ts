@@ -13,23 +13,27 @@ import { executeWithRetry } from "../../tools/executeWithRetry";
 import { AssistantConfig } from "../assistants";
 import { GraphStateType } from "../state";
 
-const KNOWN_TOOL_NAMES = ["listar_chamados", "consultar_chamado"];
+const TOOL_HANDLERS: Record<string, (args: unknown) => Promise<unknown>> = {
+  listar_chamados: async (rawArgs: unknown) => {
+    const parsed = ListarChamadosInputSchema.safeParse(rawArgs);
+    if (!parsed.success) throw new InvalidInputError(parsed.error.message);
+    return listarChamados(parsed.data);
+  },
+  consultar_chamado: async (rawArgs: unknown) => {
+    const parsed = ConsultarChamadoInputSchema.safeParse(rawArgs);
+    if (!parsed.success) throw new InvalidInputError(parsed.error.message);
+    return consultarChamado(parsed.data);
+  },
+};
+
+const KNOWN_TOOL_NAMES = Object.keys(TOOL_HANDLERS);
 
 async function runTool(name: string, rawArgs: unknown): Promise<unknown> {
-  switch (name) {
-    case "listar_chamados": {
-      const parsed = ListarChamadosInputSchema.safeParse(rawArgs);
-      if (!parsed.success) throw new InvalidInputError(parsed.error.message);
-      return listarChamados(parsed.data);
-    }
-    case "consultar_chamado": {
-      const parsed = ConsultarChamadoInputSchema.safeParse(rawArgs);
-      if (!parsed.success) throw new InvalidInputError(parsed.error.message);
-      return consultarChamado(parsed.data);
-    }
-    default:
-      throw new UnknownToolError(name);
+  const handler = TOOL_HANDLERS[name];
+  if (!handler) {
+    throw new UnknownToolError(name);
   }
+  return handler(rawArgs);
 }
 
 export async function toolsNode(
