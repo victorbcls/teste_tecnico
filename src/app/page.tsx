@@ -59,6 +59,14 @@ export default function Home() {
           ]);
         }
       }
+    } catch (e) {
+      setEntries((prev) => [
+        ...prev,
+        {
+          role: "system",
+          content: e instanceof Error ? e.message : "Erro de rede",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
