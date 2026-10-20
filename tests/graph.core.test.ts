@@ -224,6 +224,83 @@ describe("Aurora support graph — required scenarios", () => {
     }
   });
 
+  it("scenario 3c: an approved escalation does not leak approval into a later blocked turn in the same thread", async () => {
+    const graph = buildGraph();
+    const config = configFor("t-approve-then-blocked", [
+      // turn 1: propose escalating CH-101 (open)
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            name: "registrar_escalonamento",
+            args: {
+              chamadoId: "CH-101",
+              resumo: "Falha recorrente de login",
+              justificativa: "Vários usuários afetados",
+            },
+            id: "c1",
+          },
+        ],
+      }),
+      // turn 1: after the approved registration
+      new AIMessage({
+        content: "Escalonamento do CH-101 registrado com sucesso.",
+      }),
+      // turn 2: tries to escalate CH-102, which is already resolved
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            name: "registrar_escalonamento",
+            args: {
+              chamadoId: "CH-102",
+              resumo: "Cliente insiste em reabrir",
+              justificativa: "Pedido do cliente",
+            },
+            id: "c2",
+          },
+        ],
+      }),
+    ]);
+
+    // turn 1: propose, approve, register
+    await graph.invoke(
+      { messages: [new HumanMessage("Escalone o CH-101.")] },
+      config
+    );
+    await graph.invoke(new Command({ resume: { approved: true } }), config);
+
+    const stateAfterApproval = await graph.getState(config);
+    const approvedRecord = stateAfterApproval.values.escalationRecord;
+    expect(approvedRecord?.chamadoId).toBe("CH-101");
+    expect(stateAfterApproval.values.escalationApproved).toBe(true);
+
+    // turn 2, same thread: the escalation must be blocked, not registered
+    const result = await graph.invoke(
+      { messages: [new HumanMessage("Agora escalone o CH-102.")] },
+      config
+    );
+
+    const finalMessage = result.messages[result.messages.length - 1];
+    expect(finalMessage.content).toContain("Não é possível escalonar");
+    expect(finalMessage.content).toContain("CH-102");
+    expect(finalMessage.content).toContain("resolvido");
+
+    const finalState = await graph.getState(config);
+    // the stale approval from turn 1 did not route turn 2 to registerEscalation
+    expect(finalState.values.escalationApproved).toBe(false);
+    // the record still describes only the CH-101 escalation from turn 1
+    expect(finalState.values.escalationRecord).toEqual(approvedRecord);
+    // and no misleading "already registered" tool result was emitted for c2
+    const turn2Texts = (finalState.values.messages as { content: unknown }[])
+      .map((m) => String(m.content))
+      .join(" | ");
+    expect(turn2Texts).not.toContain("alreadyRegistered");
+    // blocked before any human-approval pause on this turn
+    expect(finalState.next).toEqual([]);
+    expect(finalState.tasks).toHaveLength(0);
+  });
+
   it("scenario 5: recovers from a transient tool failure within the retry limit", async () => {
     const spy = vi.spyOn(mockChamadosModule, "consultarChamado");
     let calls = 0;

@@ -31,6 +31,7 @@ export async function proposeEscalationNode(state: GraphStateType) {
   );
   if (!parsed.success) {
     return {
+      escalationApproved: false,
       messages: [
         new AIMessage({
           content: `Não consigo preparar o escalonamento: ${parsed.error.message}`,
@@ -43,6 +44,7 @@ export async function proposeEscalationNode(state: GraphStateType) {
     const chamado = consultarChamado({ id: parsed.data.chamadoId });
     if (chamado.situacao !== "aberto") {
       return {
+        escalationApproved: false,
         messages: [
           new AIMessage({
             content:
@@ -54,7 +56,10 @@ export async function proposeEscalationNode(state: GraphStateType) {
     }
   } catch (err) {
     if (err instanceof NotFoundError) {
-      return { messages: [new AIMessage({ content: err.message })] };
+      return {
+        escalationApproved: false,
+        messages: [new AIMessage({ content: err.message })],
+      };
     }
     throw err;
   }
