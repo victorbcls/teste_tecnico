@@ -1,7 +1,8 @@
-import { ChatOllama } from "@langchain/ollama";
+import { ChatOllama, OllamaEmbeddings } from "@langchain/ollama";
 import { AIMessage, BaseMessage } from "@langchain/core/messages";
 import { ChatModelLike, BoundChatModel } from "./graph/chatModel";
 import { ToolDefinition } from "./graph/toolDefinitions";
+import { EmbeddingsLike } from "./rag/embeddings";
 
 export function createOllamaChatModel(): ChatModelLike {
   const model = new ChatOllama({
@@ -26,5 +27,16 @@ export function createOllamaChatModel(): ChatModelLike {
         },
       };
     },
+  };
+}
+
+export function createOllamaEmbeddings(): EmbeddingsLike {
+  const embeddings = new OllamaEmbeddings({
+    baseUrl: process.env.OLLAMA_BASE_URL ?? "http://localhost:11434",
+    model: process.env.OLLAMA_EMBEDDING_MODEL ?? "nomic-embed-text",
+  });
+  return {
+    embedQuery: (text) => embeddings.embedQuery(text),
+    embedDocuments: (texts) => embeddings.embedDocuments(texts),
   };
 }

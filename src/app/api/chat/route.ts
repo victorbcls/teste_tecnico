@@ -4,7 +4,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { buildGraph } from "../../../lib/graph/graph";
 import { ASSISTANTS, AssistantId } from "../../../lib/graph/assistants";
 import { TOOL_DEFINITIONS } from "../../../lib/graph/toolDefinitions";
-import { createOllamaChatModel } from "../../../lib/llm";
+import { createOllamaChatModel, createOllamaEmbeddings } from "../../../lib/llm";
 import { createLimiter } from "../../../lib/tools/concurrencyLimiter";
 
 const MAX_ACTIVE = Number(process.env.MAX_ACTIVE_EXECUTIONS ?? 5);
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       thread_id: body.threadId,
       assistant,
       model: createOllamaChatModel(),
+      embeddings: createOllamaEmbeddings(),
       tools: TOOL_DEFINITIONS,
     },
     tags: [assistant.id, body.resume ? "resume" : "new-turn"],

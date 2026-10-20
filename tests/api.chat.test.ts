@@ -12,6 +12,10 @@ vi.mock("../src/lib/llm", () => ({
     }
     return currentModel;
   },
+  createOllamaEmbeddings: () => ({
+    embedQuery: async () => [],
+    embedDocuments: async () => [],
+  }),
 }));
 
 const { POST } = await import("../src/app/api/chat/route");

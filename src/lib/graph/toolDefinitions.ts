@@ -3,6 +3,7 @@ import {
   ConsultarChamadoInputSchema,
   RegistrarEscalonamentoInputSchema,
 } from "../tools/schemas";
+import { CallRagInputSchema } from "../tools/ragTool";
 
 export interface ToolDefinition {
   name: string;
@@ -28,5 +29,12 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       "Prepara um escalonamento para um chamado aberto, com resumo e justificativa. " +
       "Só é efetivado após aprovação humana.",
     schema: RegistrarEscalonamentoInputSchema,
+  },
+  {
+    name: "call_rag",
+    description:
+      "Recupera trechos da base própria de documentação de viagens, opcionalmente " +
+      "filtrando por país. Retorna found=false quando não há evidência suficiente.",
+    schema: CallRagInputSchema,
   },
 ];

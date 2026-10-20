@@ -3,6 +3,8 @@ import { AIMessage } from "@langchain/core/messages";
 import { toolsNode } from "../src/lib/graph/nodes/tools";
 import { ASSISTANTS } from "../src/lib/graph/assistants";
 import { GraphStateType } from "../src/lib/graph/state";
+import { fakeEmbeddings } from "./fakeEmbeddings";
+import { resetRagCache } from "../src/lib/tools/ragTool";
 
 function stateWithToolCall(
   name: string,
@@ -62,5 +64,27 @@ describe("toolsNode", () => {
     });
     const content = JSON.parse(result.messages[0].content as string);
     expect(content.error).toContain("desconhecida");
+  });
+
+  it("executes call_rag for the viagens assistant and returns sourced chunks", async () => {
+    resetRagCache();
+    const state = stateWithToolCall("call_rag", {
+      query: "Preciso de visto e seguro para a França?",
+    });
+    const result = await toolsNode(state, {
+      configurable: { assistant: ASSISTANTS.viagens, embeddings: fakeEmbeddings },
+    });
+    const content = JSON.parse(result.messages[0].content as string);
+    expect(content.found).toBe(true);
+    expect(content.chunks[0].source).toBe("franca.md");
+  });
+
+  it("blocks call_rag for the suporte assistant", async () => {
+    const state = stateWithToolCall("call_rag", { query: "qualquer coisa" });
+    const result = await toolsNode(state, {
+      configurable: { assistant: ASSISTANTS.suporte, embeddings: fakeEmbeddings },
+    });
+    const content = JSON.parse(result.messages[0].content as string);
+    expect(content.error).toContain("não é permitida");
   });
 });
