@@ -53,6 +53,11 @@ export async function POST(req: Request) {
       model: createOllamaChatModel(),
       tools: TOOL_DEFINITIONS,
     },
+    tags: [assistant.id, body.resume ? "resume" : "new-turn"],
+    metadata: {
+      thread_id: body.threadId,
+      assistant_id: assistant.id,
+    },
   };
 
   let release: (() => void) | null = null;
