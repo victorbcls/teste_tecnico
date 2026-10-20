@@ -3,9 +3,15 @@ import { AIMessage } from "@langchain/core/messages";
 import { createFakeChatModel } from "./fakeChatModel";
 
 let scriptedResponses: AIMessage[] = [];
+let currentModel: ReturnType<typeof createFakeChatModel> | null = null;
 
 vi.mock("../src/lib/llm", () => ({
-  createOllamaChatModel: () => createFakeChatModel(scriptedResponses),
+  createOllamaChatModel: () => {
+    if (!currentModel) {
+      currentModel = createFakeChatModel(scriptedResponses);
+    }
+    return currentModel;
+  },
 }));
 
 const { POST } = await import("../src/app/api/chat/route");
@@ -21,6 +27,7 @@ function jsonRequest(body: unknown): Request {
 describe("POST /api/chat", () => {
   beforeEach(() => {
     scriptedResponses = [];
+    currentModel = null;
   });
 
   it("returns 400 when threadId is missing", async () => {

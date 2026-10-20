@@ -6,26 +6,10 @@ import { ASSISTANTS, AssistantId } from "../../../lib/graph/assistants";
 import { TOOL_DEFINITIONS } from "../../../lib/graph/toolDefinitions";
 import { createOllamaChatModel } from "../../../lib/llm";
 import { createLimiter } from "../../../lib/tools/concurrencyLimiter";
-import { ChatModelLike } from "../../../lib/graph/chatModel";
 
 const MAX_ACTIVE = Number(process.env.MAX_ACTIVE_EXECUTIONS ?? 5);
 const limiter = createLimiter(MAX_ACTIVE);
 const graph = buildGraph();
-
-// One chat-model instance per thread, reused across requests (including a
-// resume after a human-approval pause) so a multi-step turn that spans more
-// than one POST call for the same thread_id keeps talking to the same model
-// instance instead of a brand-new one each time.
-const modelsByThread = new Map<string, ChatModelLike>();
-
-function modelForThread(threadId: string): ChatModelLike {
-  let model = modelsByThread.get(threadId);
-  if (!model) {
-    model = createOllamaChatModel();
-    modelsByThread.set(threadId, model);
-  }
-  return model;
-}
 
 interface ChatRequestBody {
   threadId: string;
@@ -66,7 +50,7 @@ export async function POST(req: Request) {
     configurable: {
       thread_id: body.threadId,
       assistant,
-      model: modelForThread(body.threadId),
+      model: createOllamaChatModel(),
       tools: TOOL_DEFINITIONS,
     },
   };
