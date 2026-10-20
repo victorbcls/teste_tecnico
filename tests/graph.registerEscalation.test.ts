@@ -56,6 +56,9 @@ describe("registerEscalationNode", () => {
     );
     expect(content.alreadyRegistered).toBe(true);
     expect(content.record).toEqual(existingRecord);
+    expect(
+      (result.messages?.[0] as { tool_call_id?: string }).tool_call_id
+    ).toBe("call-esc-1");
   });
 
   it("throws when there is no pending registrar_escalonamento call", async () => {

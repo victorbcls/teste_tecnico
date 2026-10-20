@@ -14,12 +14,24 @@ function buildEscalationRecord(rawArgs: unknown): EscalationRecord {
   };
 }
 
+function findPendingEscalationCall(state: GraphStateType) {
+  const lastAiMessage = [...state.messages]
+    .reverse()
+    .find(
+      (m) => m instanceof AIMessage && (m.tool_calls?.length ?? 0) > 0
+    ) as AIMessage | undefined;
+  return lastAiMessage?.tool_calls?.find(
+    (c) => c.name === "registrar_escalonamento"
+  );
+}
+
 export async function registerEscalationNode(state: GraphStateType) {
   if (state.escalationRegistered && state.escalationRecord) {
+    const escalationCall = findPendingEscalationCall(state);
     return {
       messages: [
         new ToolMessage({
-          tool_call_id: "registrar_escalonamento",
+          tool_call_id: escalationCall?.id ?? "registrar_escalonamento",
           content: JSON.stringify({
             alreadyRegistered: true,
             record: state.escalationRecord,
@@ -29,14 +41,7 @@ export async function registerEscalationNode(state: GraphStateType) {
     };
   }
 
-  const lastAiMessage = [...state.messages]
-    .reverse()
-    .find(
-      (m) => m instanceof AIMessage && (m.tool_calls?.length ?? 0) > 0
-    ) as AIMessage | undefined;
-  const escalationCall = lastAiMessage?.tool_calls?.find(
-    (c) => c.name === "registrar_escalonamento"
-  );
+  const escalationCall = findPendingEscalationCall(state);
   if (!escalationCall) {
     throw new InvalidInputError(
       "registerEscalationNode chamado sem uma proposta de registrar_escalonamento pendente"
