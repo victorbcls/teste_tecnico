@@ -108,22 +108,36 @@ export default function Home() {
     setPendingProposal(null);
   }
 
+  const assistantTagline =
+    assistantId === "suporte"
+      ? "Chamados, consultas e escalonamento com aprovação humana"
+      : "Documentação de viagens com busca semântica (RAG)";
+
   return (
-    <main className="mx-auto flex h-screen max-w-2xl flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <AssistantSelector
-          value={assistantId}
-          onChange={setAssistantId}
-          disabled={loading || !!pendingProposal}
-        />
-        <button
-          className="rounded bg-slate-200 px-3 py-1 text-sm hover:bg-slate-300 disabled:opacity-50"
-          onClick={handleNewConversation}
-          disabled={loading}
-        >
-          Nova conversa
-        </button>
-      </div>
+    <main className="mx-auto flex h-screen w-full max-w-2xl flex-col gap-4 p-4">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight text-slate-900">
+            Aurora{" "}
+            <span className="font-normal text-slate-400">Assistant</span>
+          </h1>
+          <p className="text-xs text-slate-500">{assistantTagline}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <AssistantSelector
+            value={assistantId}
+            onChange={setAssistantId}
+            disabled={loading || !!pendingProposal}
+          />
+          <button
+            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={handleNewConversation}
+            disabled={loading}
+          >
+            Nova conversa
+          </button>
+        </div>
+      </header>
 
       <ChatWindow
         entries={entries}
@@ -137,7 +151,7 @@ export default function Home() {
 
       <div className="flex gap-2">
         <input
-          className="flex-1 rounded border border-slate-300 px-3 py-2"
+          className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition-shadow focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-slate-100"
           value={input}
           disabled={loading || !!pendingProposal}
           onChange={(e) => setInput(e.target.value)}
@@ -145,7 +159,7 @@ export default function Home() {
           placeholder="Digite sua mensagem..."
         />
         <button
-          className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+          className="rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={handleSend}
           disabled={loading || !!pendingProposal}
         >

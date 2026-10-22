@@ -7,6 +7,19 @@ export interface ChatEntry {
   content: string;
 }
 
+const ROLE_STYLES: Record<ChatEntry["role"], string> = {
+  user: "ml-auto bg-indigo-600 text-white rounded-br-md",
+  assistant:
+    "bg-white text-slate-800 border border-slate-200 rounded-bl-md shadow-sm",
+  system: "mx-auto bg-red-50 text-red-700 border border-red-200 text-center",
+};
+
+const ROLE_LABELS: Record<ChatEntry["role"], string> = {
+  user: "Você",
+  assistant: "Assistente",
+  system: "Erro",
+};
+
 export function ChatWindow({
   entries,
   loading,
@@ -23,33 +36,38 @@ export function ChatWindow({
   }, [entries, loading]);
 
   return (
-    <div className="flex-1 overflow-y-auto rounded border border-slate-200 p-3">
+    <div className="flex-1 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
       {entries.length === 0 && !loading && (
-        <p className="text-sm text-slate-400">
-          Pergunte algo, por exemplo: &quot;Liste todos os chamados
-          abertos.&quot;
-        </p>
+        <div className="flex h-full flex-col items-center justify-center gap-1 text-center text-slate-400">
+          <span className="text-2xl">💬</span>
+          <p className="text-sm">
+            Pergunte algo, por exemplo:
+            <br />
+            <span className="font-medium text-slate-500">
+              &quot;Liste todos os chamados abertos.&quot;
+            </span>
+          </p>
+        </div>
       )}
       {entries.map((entry, index) => (
         <div
           key={index}
-          className={`mb-2 max-w-[80%] rounded px-3 py-2 text-sm ${
-            entry.role === "user"
-              ? "ml-auto bg-blue-600 text-white"
-              : entry.role === "system"
-                ? "bg-red-100 text-red-800"
-                : "bg-slate-100 text-slate-900"
-          }`}
+          className={`flex max-w-[80%] flex-col gap-0.5 rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${ROLE_STYLES[entry.role]}`}
         >
-          {entry.content}
+          {entry.role !== "user" && (
+            <span className="text-[11px] font-semibold uppercase tracking-wide opacity-60">
+              {ROLE_LABELS[entry.role]}
+            </span>
+          )}
+          <span className="whitespace-pre-wrap">{entry.content}</span>
         </div>
       ))}
       {loading && (
-        <div className="mb-2 flex max-w-[80%] items-center gap-2 rounded bg-slate-100 px-3 py-2 text-sm text-slate-500">
+        <div className="flex max-w-[80%] items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-500 shadow-sm">
           <span className="flex gap-1">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.3s]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400 [animation-delay:-0.15s]" />
+            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-indigo-400" />
           </span>
           {!!loadingSeconds && loadingSeconds > 2 && (
             <span>
