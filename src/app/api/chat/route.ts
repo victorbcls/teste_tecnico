@@ -6,6 +6,7 @@ import { ASSISTANTS, AssistantId } from "../../../lib/graph/assistants";
 import { TOOL_DEFINITIONS } from "../../../lib/graph/toolDefinitions";
 import { createOllamaChatModel, createOllamaEmbeddings } from "../../../lib/llm";
 import { createLimiter } from "../../../lib/tools/concurrencyLimiter";
+import { describeOllamaError } from "../../../lib/ollamaErrors";
 
 const MAX_ACTIVE = Number(process.env.MAX_ACTIVE_EXECUTIONS ?? 5);
 const limiter = createLimiter(MAX_ACTIVE);
@@ -87,7 +88,9 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     if (release) release();
-    const message = err instanceof Error ? err.message : "erro desconhecido";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: describeOllamaError(err) },
+      { status: 500 }
+    );
   }
 }

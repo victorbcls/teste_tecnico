@@ -1,0 +1,58 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # GPU opcional (requer nvidia-container-toolkit no host):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Serviço de inicialização: baixa os modelos configurados e sai. O `app`
+  # só sobe depois que ele terminar com sucesso.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: "ollama:11434"
+      MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+      EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'ollama pull "$$MODEL" && ollama pull "$$EMBEDDING_MODEL"'
+    restart: "no"
+
+  app:
+    build: .
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    environment:
+      OLLAMA_BASE_URL: "http://ollama:11434"
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      RAG_MIN_SCORE: ${RAG_MIN_SCORE:-0.3}
+      MAX_ACTIVE_EXECUTIONS: ${MAX_ACTIVE_EXECUTIONS:-5}
+      TOOL_TIMEOUT_MS: ${TOOL_TIMEOUT_MS:-5000}
+      TOOL_MAX_ATTEMPTS: ${TOOL_MAX_ATTEMPTS:-3}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-aurora-support-assistant}
+    ports:
+      - "3000:3000"
+
+volumes:
+  ollama_data:

@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.claude
+.superpowers
+docs
+coverage
+*.tsbuildinfo
+.env
+.env.local
+.env*.local
+qwantyco-desafio-tecnico.pdf

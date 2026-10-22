@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "tsx --env-file=.env.local evaluation/runEval.ts",
-    "seed:dataset": "tsx --env-file=.env.local evaluation/dataset.ts"
+    "seed:dataset": "tsx --env-file=.env.local evaluation/dataset.ts",
+    "models:pull": "bash scripts/pull-models.sh"
   },
   "dependencies": {
     "@langchain/core": "^1.2.19",
