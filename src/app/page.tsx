@@ -23,6 +23,19 @@ export default function Home() {
   );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingSeconds(0);
+      return;
+    }
+    const start = Date.now();
+    const interval = setInterval(() => {
+      setLoadingSeconds(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     const key = threadKey(assistantId);
@@ -112,7 +125,11 @@ export default function Home() {
         </button>
       </div>
 
-      <ChatWindow entries={entries} />
+      <ChatWindow
+        entries={entries}
+        loading={loading}
+        loadingSeconds={loadingSeconds}
+      />
 
       {pendingProposal && (
         <ApprovalCard proposal={pendingProposal} onDecide={handleDecision} />
@@ -132,7 +149,7 @@ export default function Home() {
           onClick={handleSend}
           disabled={loading || !!pendingProposal}
         >
-          Enviar
+          {loading ? "Enviando…" : "Enviar"}
         </button>
       </div>
     </main>
